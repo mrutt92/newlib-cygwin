@@ -1,14 +1,23 @@
-#include <machine/syscall.h>
-#include "kernel_stat.h"
-#include "internal_syscall.h"
+/*
+ * Stub version of stat.
+ */
 
-/* Status of a file (by name).  */
+#include "config.h"
+#include <_ansi.h>
+#include <_syslist.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+#undef errno
+extern int errno;
+#include "warning.h"
 
 int
-_stat(const char *file, struct stat *st)
+_stat (const char  *file,
+        struct stat *st)
 {
-  struct kernel_stat kst;
-  int rv = syscall_errno (SYS_stat, 2, file, &kst, 0, 0, 0, 0);
-  _conv_stat (st, &kst);
-  return rv;
+  errno = ENOSYS;
+  return -1;
 }
+
+stub_warning(_stat)

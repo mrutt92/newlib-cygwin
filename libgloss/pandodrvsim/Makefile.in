@@ -30,7 +30,8 @@ gloss_srcs = \
 	unlink.c \
 	wait.c \
 	warning.h \
-	write.c
+	write.c \
+	sys_conv_stat.c
 
 gloss_specs = 
 
