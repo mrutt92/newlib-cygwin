@@ -1,0 +1,11 @@
+%rename link_gcc_c_sequence                pandodrvsim_link_gcc_c_sequence
+
+*pandodrvsim_libgloss:
+-lpandodrvsim
+
+*pandodrvsim_libc:
+%{!specs=nano.specs:-lc} %{specs=nano.specs:-lc_nano}
+
+*link_gcc_c_sequence:
+%(pandodrvsim_link_gcc_c_sequence) --start-group %G %(pandodrvsim_libc) %(pandodrvsim_libgloss) --end-group
+
