@@ -1,118 +1,233 @@
-# Copyright (c) 1998 Cygnus Support
-#
-# The authors hereby grant permission to use, copy, modify, distribute,
-# and license this software and its documentation for any purpose, provided
-# that existing copyright notices are retained in all copies and that this
-# notice is included verbatim in any distributions. No written agreement,
-# license, or royalty fee is required for any of the authorized uses.
-# Modifications to this software may be copyrighted by their authors
-# and need not follow the licensing terms described here, provided that
-# the new terms are clearly indicated on the first page of each file where
-# they apply.
+#-------------------------------------------------------------------------
+# Source files
+#-------------------------------------------------------------------------
 
-DESTDIR =
-VPATH = @srcdir@
-srcdir = @srcdir@
-objdir = .
-srcroot = $(srcdir)/../..
-objroot = $(objdir)/../..
+gloss_hdrs = \
+	machine/syscall.h \
 
-prefix = @prefix@
-exec_prefix = @exec_prefix@
+gloss_srcs = \
+	chown.c \
+	close.c \
+	environ.c \
+	errno.c \
+	execve.c \
+	_exit.c \
+	fork.c \
+	fstat.c \
+	getpid.c \
+	gettod.c \
+	isatty.c \
+	kill.c \
+	link.c \
+	lseek.c \
+	open.c \
+	read.c \
+	readlink.c \
+	sbrk.c \
+	stat.c \
+	symlink.c \
+	times.c \
+	unlink.c \
+	wait.c \
+	warning.h \
+	write.c
 
-host_alias = @host_alias@
-target_alias = @target_alias@
-program_transform_name = @program_transform_name@
+gloss_specs = 
 
-bindir = @bindir@
-libdir = @libdir@
-tooldir = $(exec_prefix)/$(target_alias)
+# Extra files
+
+crt0_asm      = crt0.S
 
 # Multilib support variables.
 # TOP is used instead of MULTI{BUILD,SRC}TOP.
+
 MULTIDIRS =
 MULTISUBDIR =
 MULTIDO = true
 MULTICLEAN = true
 
-INSTALL = @INSTALL@
-INSTALL_PROGRAM = @INSTALL_PROGRAM@
-INSTALL_DATA = @INSTALL_DATA@
+#-------------------------------------------------------------------------
+# Basic setup
+#-------------------------------------------------------------------------
 
-SHELL =	/bin/sh
+# Remove all default implicit rules since they can cause subtle bugs
+# and they just make things run slower
 
-CC = @CC@
+.SUFFIXES:
+% : %,v
+% : RCS/%,v
+% : RCS/%
+% : s.%
+% : SCCS/s.%
 
-#AS = @AS@
-AS = `if [ -f ${objroot}/../gas/as-new ] ; \
-	then echo ${objroot}/../gas/as-new ; \
-	else echo as ; fi`
+# Default is to build the prereqs of the all target (defined at bottom)
 
-AR = @AR@
+default : all
+.PHONY : default
 
-#LD = @LD@
-LD = `if [ -f ${objroot}/../ld/ld-new ] ; \
-	then echo ${objroot}/../ld/ld-new ; \
-	else echo ld ; fi`
+# Source directory
 
-RANLIB = @RANLIB@
+obj_dir := .
+src_dir := @srcdir@
+VPATH   := $(src_dir) $(src_dir)/machine
 
-OBJDUMP = `if [ -f ${objroot}/../binutils/objdump ] ; \
-	then echo ${objroot}/../binutils/objdump ; \
-	else t='$(program_transform_name)'; echo objdump | sed -e $$t ; fi`
-OBJCOPY = `if [ -f ${objroot}/../binutils/objcopy ] ; \
-	then echo ${objroot}/../binutils/objcopy ; \
-	else t='$(program_transform_name)'; echo objcopy | sed -e $$t ; fi`
+# Installation directories
 
-# object files needed
-OBJS = chown.o close.o environ.o errno.o execve.o fork.o fstat.o \
-	getpid.o gettod.o isatty.o kill.o link.o lseek.o open.o \
-	read.o readlink.o sbrk.o stat.o symlink.o times.o unlink.o \
-	wait.o write.o _exit.o
+prefix  := @prefix@
+DESTDIR ?= $(prefix)
 
-# Object files specific to particular targets.
-EVALOBJS = ${OBJS}
+install_hdrs_dir := $(DESTDIR)$(prefix)/$(target_alias)/include/machine
+install_libs_dir  = $(DESTDIR)$(prefix)/$(target_alias)/lib${MULTISUBDIR}
 
-GCC_LDFLAGS = `if [ -d ${objroot}/../gcc ] ; \
-	then echo -L${objroot}/../gcc ; fi`
+#-------------------------------------------------------------------------
+# Programs and flags 
+#-------------------------------------------------------------------------
 
-OUTPUTS = libgloss.a crt0.o
-#SPECS = ${srcdir}/pandodrvsim.specs
+# C compiler
 
-# Host specific makefile fragment comes in here.
-@host_makefile_frag@
+CC            := @CC@
+CFLAGS        := @CFLAGS@
+CPPFLAGS      := -I$(obj_dir) -I$(src_dir)
+COMPILE       := $(CC) -MMD -MP $(CPPFLAGS) $(CFLAGS)
 
-all: ${OUTPUTS}
+# Library creation
 
-#
-# here's where we build the library for each target
-#
+AR            := @AR@
+RANLIB        := @RANLIB@
 
-libgloss.a: $(EVALOBJS)
-	${AR} ${ARFLAGS} $@ $(EVALOBJS)
-	${RANLIB} $@
+# Installation
 
-doc:	
+INSTALL       := @INSTALL@
+INSTALL_DATA  := @INSTALL_DATA@
 
-clean mostlyclean:
-	rm -f $(OUTPUTS) *.i *~ *.o *-test *.srec *.dis *.map *.x
+#-------------------------------------------------------------------------
+# Build Object Files from C Source
+#-------------------------------------------------------------------------
 
-distclean maintainer-clean realclean: clean
-	rm -f Makefile config.status $(OUTPUTS)
+gloss_c_srcs = $(filter %.c, $(gloss_srcs))
+gloss_c_objs = $(patsubst %.c, %.o, $(notdir $(gloss_c_srcs)))
+gloss_c_deps = $(patsubst %.c, %.d, $(notdir $(gloss_c_srcs)))
 
-.PHONY: install info install-info clean-info
-install:
-	@for outputs in ${OUTPUTS} ${SPECS}; do\
-	 mkdir -p $(DESTDIR)$(tooldir)/lib${MULTISUBDIR}; \
-	 $(INSTALL_DATA) $${outputs} $(DESTDIR)$(tooldir)/lib${MULTISUBDIR}; \
+$(gloss_c_objs) : %.o : %.c
+	$(COMPILE) -c $<
+
+gloss_objs += $(gloss_c_objs)
+deps += $(gloss_c_deps)
+junk += $(gloss_c_deps) $(gloss_c_objs)
+
+#-------------------------------------------------------------------------
+# Build Object Files from Assembly Source
+#-------------------------------------------------------------------------
+
+gloss_asm_srcs = $(filter %.S, $(gloss_srcs))
+gloss_asm_objs = $(patsubst %.S, %.o, $(notdir $(gloss_asm_srcs)))
+gloss_asm_deps = $(patsubst %.S, %.d, $(notdir $(gloss_asm_srcs)))
+
+$(gloss_asm_objs) : %.o : %.S
+	$(COMPILE) -c -o $@ $<
+
+gloss_objs += $(gloss_asm_objs)
+deps += $(gloss_asm_deps)
+junk += $(gloss_asm_deps) $(gloss_asm_objs)
+
+#-------------------------------------------------------------------------
+# Build libgloss.a
+#-------------------------------------------------------------------------
+
+gloss_lib  = libgloss.a
+$(gloss_lib) : $(gloss_objs)
+	$(AR) rcv $@ $^
+	$(RANLIB) $@
+
+junk += $(gloss_lib)
+
+install_hdrs += $(gloss_hdrs)
+install_libs += $(gloss_lib)
+install_specs += $(gloss_specs)
+
+#-------------------------------------------------------------------------
+# Build crt0.o
+#-------------------------------------------------------------------------
+
+crt0_obj  = $(patsubst %.S, %.o, $(crt0_asm))
+crt0_deps = $(patsubst %.S, %.d, $(crt0_asm))
+
+$(crt0_obj) : %.o : %.S
+	$(COMPILE) -c $<
+
+deps += $(crt0_deps)
+junk += $(crt0_deps) $(crt0_obj)
+
+install_libs += $(crt0_obj)
+
+#-------------------------------------------------------------------------
+# Autodependency files
+#-------------------------------------------------------------------------
+
+-include $(deps)
+
+deps : $(deps)
+.PHONY : deps
+
+#-------------------------------------------------------------------------
+# Installation
+#-------------------------------------------------------------------------
+
+install_hdrs_wdir += $(addprefix $(src_dir)/, $(install_hdrs))
+install-hdrs : $(install_hdrs_wdir)
+	test -d $(install_hdrs_dir) || mkdir -p $(install_hdrs_dir)
+	for file in $^; do \
+		$(INSTALL_DATA) $$file $(install_hdrs_dir)/; \
 	done
 
-info:
-install-info:
-clean-info:
+install-libs : $(install_libs)
+	test -d $(install_libs_dir) || mkdir -p $(install_libs_dir)
+	for file in $^; do \
+		$(INSTALL_DATA) $$file $(install_libs_dir)/$$file; \
+	done
 
-Makefile: Makefile.in config.status @host_makefile_frag_path@
-	$(SHELL) config.status
+install-specs : $(install_specs)
+	test -d $(install_libs_dir) || mkdir -p $(install_libs_dir)
+	for file in $^; do \
+		$(INSTALL_DATA) $$file $(install_libs_dir)/; \
+	done
 
-config.status: configure
-	$(SHELL) config.status --recheck
+install : install-hdrs install-libs install-specs
+.PHONY : install install-hdrs install-libs
+
+#-------------------------------------------------------------------------
+# Regenerate configure information
+#-------------------------------------------------------------------------
+
+configure_prereq = \
+  $(src_dir)/configure.in \
+
+$(src_dir)/configure : $(configure_prereq)
+	cd $(src_dir) && autoconf
+
+config.status : $(src_dir)/configure
+	./config.status --recheck
+
+Makefile : $(src_dir)/Makefile.in config.status
+	./config.status
+
+dist_junk += config.status Makefile config.log
+
+#-------------------------------------------------------------------------
+# Default
+#-------------------------------------------------------------------------
+
+all : $(install_libs)
+.PHONY : all
+
+#-------------------------------------------------------------------------
+# Clean up junk
+#-------------------------------------------------------------------------
+
+clean :
+	rm -rf *~ \#* $(junk)
+
+distclean :
+	rm -rf *~ \#* $(junk) $(dist_junk)
+
+.PHONY : clean distclean
