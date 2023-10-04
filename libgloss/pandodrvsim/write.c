@@ -1,23 +1,10 @@
-/*
- * Stub version of write.
- */
+#include <machine/syscall.h>
+#include <sys/types.h>
+#include "internal_syscall.h"
 
-#include "config.h"
-#include <_ansi.h>
-#include <_syslist.h>
-#include <errno.h>
-#undef errno
-extern int errno;
-#include "warning.h"
-
-int
-_write (int   file,
-        char *ptr,
-        int   len)
+/* Write to a file.  */
+ssize_t
+_write(int file, const void *ptr, size_t len)
 {
-  errno = ENOSYS;
-  return -1;
+  return syscall_errno (SYS_write, 3, file, ptr, len, 0, 0, 0);
 }
-
-stub_warning(_write)
-
