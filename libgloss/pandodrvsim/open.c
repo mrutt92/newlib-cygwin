@@ -1,22 +1,9 @@
-/*
- * Stub version of open.
- */
+#include <machine/syscall.h>
+#include "internal_syscall.h"
 
-#include "config.h"
-#include <_ansi.h>
-#include <_syslist.h>
-#include <errno.h>
-#undef errno
-extern int errno;
-#include "warning.h"
-
+/* Open a file.  */
 int
-_open (char *file,
-        int   flags,
-        int   mode)
+_open(const char *name, int flags, int mode)
 {
-  errno = ENOSYS;
-  return -1;
+  return syscall_errno (SYS_open, 3, name, flags, mode, 0, 0, 0);
 }
-
-stub_warning(_open)
