@@ -1,22 +1,9 @@
-/*
- * Stub version of read.
- */
+#include <machine/syscall.h>
+#include <sys/types.h>
+#include "internal_syscall.h"
 
-#include "config.h"
-#include <_ansi.h>
-#include <_syslist.h>
-#include <errno.h>
-#undef errno
-extern int errno;
-#include "warning.h"
-
-int
-_read (int   file,
-        char *ptr,
-        int   len)
+/* Read from a file.  */
+ssize_t _read(int file, void *ptr, size_t len)
 {
-  errno = ENOSYS;
-  return -1;
+  return syscall_errno (SYS_read, 3, file, ptr, len, 0, 0, 0);
 }
-
-stub_warning(_read)
